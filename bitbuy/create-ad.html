@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BitBuy — Criar Anúncio</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="create-ad">
+
+<div class="page-wrapper" style="padding:2rem 1rem 8rem;background:var(--muted);min-height:100vh">
+  <div style="max-width:42rem;margin:0 auto">
+
+    <button class="btn btn-ghost" style="margin-bottom:1.5rem;gap:.5rem" onclick="navigate('home.html')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:1rem;height:1rem">
+        <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+      </svg>
+      Voltar
+    </button>
+
+    <!-- Acesso negado para compradores -->
+    <div id="access-denied" style="display:none">
+      <div class="card shadow" style="padding:2rem;text-align:center">
+        <p style="color:var(--muted-foreground);margin-bottom:1rem">Apenas contas do tipo vendedor podem criar anúncios.</p>
+        <button class="btn btn-primary" onclick="navigate('home.html')">Voltar para o Início</button>
+      </div>
+    </div>
+
+    <!-- Formulário -->
+    <div class="card shadow" id="create-ad-form-card">
+      <div class="card-header" style="padding-bottom:1rem">
+        <div class="card-title" style="font-size:1.5rem;font-weight:700">Criar Novo Anúncio</div>
+      </div>
+      <div class="card-content">
+        <form id="create-ad-form" onsubmit="handleCreateAd(event)">
+
+          <div class="form-group">
+            <label class="label" for="ad-title">Título do Anúncio</label>
+            <input class="input" id="ad-title" type="text" placeholder="Ex: Livro de Cálculo 1 - Novo" required>
+          </div>
+
+          <div class="form-group">
+            <label class="label" for="ad-description">Descrição Detalhada</label>
+            <textarea class="textarea" id="ad-description" rows="4"
+              placeholder="Descreva o estado do produto ou detalhes do seu serviço..." required></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group" style="margin-bottom:0">
+              <label class="label" for="ad-type">Tipo</label>
+              <select class="select" id="ad-type" onchange="toggleStockField()">
+                <option value="Produto" selected>Produto</option>
+                <option value="Servico">Serviço</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+              <label class="label" for="ad-price">Preço (R$)</label>
+              <input class="input" id="ad-price" type="number" step="0.01" min="0" placeholder="0,00" required>
+            </div>
+            
+          </div>
+          <div style="margin-bottom:1rem"></div>
+
+          <div class="form-row">
+            <div class="form-group" id= category_field style="margin-bottom:0">
+              <label class="label" for="ad-category">Categoria</label>
+              <select class="select" id="ad-category">
+                <option value="Alimentos">Alimentos</option>
+                <option value="Informatica">Informática</option>
+                <option value="Roupas">Roupas</option>
+                <option value="Cosmeticos">Cosméticos</option>
+                <option value="Material_Escolar">Material Escolar</option>
+                <option value="Outros" selected>Outros</option>
+              </select>
+            </div>
+            <div class="form-group" id="stock-field" style="margin-bottom:0">
+              <label class="label" for="ad-stock">Estoque Disponível</label>
+              <input class="input" id="ad-stock" type="number" min="0" placeholder="1" required>
+            </div>
+          </div>
+          <div style="margin-bottom:1rem"></div>
+
+          <div class="form-group">
+            <label class="label">Imagem Ilustrativa</label>
+            <div class="image-upload-area" id="img-upload-area" onclick="document.getElementById('ad-image-input').click()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+              <p style="font-size:.875rem;color:var(--muted-foreground)">Clique para adicionar uma imagem</p>
+              <input type="file" id="ad-image-input" accept="image/*" style="display:none" onchange="previewAdImage(this)">
+            </div>
+            <div id="ad-image-preview-wrapper" style="display:none;margin-top:.5rem;text-align:center">
+              <img id="ad-image-preview" class="image-preview">
+              <button type="button" class="btn btn-outline btn-sm" style="margin-top:.5rem" onclick="removeAdImage()">
+                Remover Imagem
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-full" id="submit-btn">Criar Anúncio</button>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<nav class="bottom-nav" id="bottom-nav"></nav>
+<footer class="footer" id="app-footer"></footer>
+<div id="toast-container"></div>
+
+<script src="app.js"></script>
+<script>
+  let adImageData = '';
+
+  function toggleStockField() {
+    const type = document.getElementById('ad-type').value;
+    const field = document.getElementById('stock-field');
+    const input = document.getElementById('ad-stock');
+    const category = document.getElementById('category_field');
+    const isProduct = type === 'Produto';
+    field.style.display = isProduct ? '' : 'none';
+    category.style.display = isProduct ? '' : 'none';
+    input.required = isProduct;
+  }
+
+  function previewAdImage(input) {
+    const file = input.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      adImageData = reader.result;
+      document.getElementById('ad-image-preview').src = adImageData;
+      document.getElementById('ad-image-preview-wrapper').style.display = '';
+      document.getElementById('img-upload-area').style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeAdImage() {
+    adImageData = '';
+    document.getElementById('ad-image-preview-wrapper').style.display = 'none';
+    document.getElementById('img-upload-area').style.display = '';
+    document.getElementById('ad-image-input').value = '';
+  }
+
+  async function handleCreateAd(e) {
+    e.preventDefault();
+    const user = State.getUser();
+    if (!user) { toast('Usuário não autenticado.', 'error'); return; }
+
+    const type  = document.getElementById('ad-type').value;
+    const title = document.getElementById('ad-title').value.trim();
+    const price = parseFloat(document.getElementById('ad-price').value);
+
+    if (!title) { toast('Informe o título do anúncio.', 'error'); return; }
+    if (isNaN(price) || price < 0) { toast('Informe um preço válido.', 'error'); return; }
+
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.textContent = 'Criando...';
+
+    const payload = {
+      title,
+      description:    document.getElementById('ad-description').value.trim(),
+      price,
+      stock:          type === 'Produto' ? parseInt(document.getElementById('ad-stock').value || '1') : 0,
+      type,
+      category:       document.getElementById('ad-category').value,
+      image:          adImageData,
+      sellerId:       user.id,
+      sellerUsername: user.username,
+    };
+
+    try {
+      const data = await apiPost('create_ad.php', payload);
+      if (data.success) {
+        toast('Anúncio criado com sucesso!');
+        setTimeout(() => navigate('home.html'), 700);
+      } else {
+        toast(data.message || 'Erro ao criar o anúncio.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Criar Anúncio';
+      }
+    } catch (err) {
+      toast('Erro de conexão: ' + err.message, 'error');
+      btn.disabled = false;
+      btn.textContent = 'Criar Anúncio';
+    }
+  }
+
+  function initPage() {
+    const user = State.getUser();
+    if (user?.accountType !== 'vendedor') {
+      document.getElementById('access-denied').style.display = '';
+      document.getElementById('create-ad-form-card').style.display = 'none';
+    }
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BitBuy — Início</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="home">
+
+<!-- Header fixo com busca e categorias -->
+<header class="home-header">
+  <div class="home-header-inner">
+    <h1 class="gradient-text">BitBuy</h1>
+
+    <div class="search-wrapper">
+      <div class="search-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+      </div>
+      <input class="input search-input" id="search-input" type="text"
+             placeholder="Pesquisar produtos e serviços..."
+             oninput="filterAds()">
+    </div>
+
+    <div class="categories" id="categories">
+      <span class="badge badge-default clickable active-cat" data-cat="Todos" onclick="selectCat(this,'Todos')">Todos</span>
+      <span class="badge badge-outline clickable" data-cat="Alimentos"  onclick="selectCat(this,'Alimentos')">Alimentos</span>
+      <span class="badge badge-outline clickable" data-cat="Informatica" onclick="selectCat(this,'Informatica')">Informática</span>
+      <span class="badge badge-outline clickable" data-cat="Roupas"     onclick="selectCat(this,'Roupas')">Roupas</span>
+      <span class="badge badge-outline clickable" data-cat="Cosmeticos"     onclick="selectCat(this,'Cosmeticos')">Cosméticos</span>
+      <span class="badge badge-outline clickable" data-cat="Material_Escolar"     onclick="selectCat(this,'Material_Escolar')">Material Escolar</span>
+      <span class="badge badge-outline clickable" data-cat="Outros"     onclick="selectCat(this,'Outros')">Outros</span>
+    </div>
+  </div>
+</header>
+
+<!-- Grid de anúncios -->
+<main >
+  <div id="ads-loading" class="empty-state loading-pulse">Carregando anúncios...</div>
+  <div class="ads-grid" id="ads-grid" style="display:none"></div>
+  <div id="ads-empty" class="empty-state" style="display:none">Nenhum anúncio encontrado</div>
+</main>
+
+<!-- Navegação e footer -->
+<nav class="bottom-nav" id="bottom-nav"></nav>
+<footer class="footer" id="app-footer"></footer>
+<div id="toast-container"></div>
+
+<script src="app.js"></script>
+<script>
+  let selectedCat = 'Todos';
+
+  function selectCat(el, cat) {
+    selectedCat = cat;
+    document.querySelectorAll('.categories .badge').forEach(b => {
+      b.className = 'badge clickable ' + (b.dataset.cat === cat ? 'badge-default' : 'badge-outline');
+    });
+    filterAds();
+  }
+
+  function filterAds() {
+    const q = document.getElementById('search-input').value.toLowerCase();
+    const filtered = State.ads.filter(ad => {
+      const matchSearch = ad.title.toLowerCase().includes(q) || ad.description.toLowerCase().includes(q);
+      const matchCat = selectedCat === 'Todos' || ad.category === selectedCat;
+      return matchSearch && matchCat;
+    });
+    renderAds(filtered);
+  }
+
+  function renderAds(ads) {
+    ads = ads ?? State.ads;
+    const grid = document.getElementById('ads-grid');
+    const empty = document.getElementById('ads-empty');
+    if (ads.length === 0) {
+      grid.style.display = 'none';
+      empty.style.display = '';
+    } else {
+      grid.style.display = '';
+      empty.style.display = 'none';
+      grid.innerHTML = ads.map(ad => adCardHTML(ad)).join('');
+    }
+  }
+
+  async function initPage() {
+    try {
+      const data = await fetchAds();
+      if (data.success) State.ads = data.ads;
+    } catch { State.ads = []; }
+    document.getElementById('ads-loading').style.display = 'none';
+    renderAds();
+  }
+</script>
+</body>
+</html>

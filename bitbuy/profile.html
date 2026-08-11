@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BitBuy — Perfil</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="profile">
+
+<div class="page-wrapper" style="padding:2rem 1rem 8rem;background:var(--muted);min-height:100vh" id="profile-page">
+  <div style="max-width:56rem;margin:0 auto;display:flex;flex-direction:column;gap:1.5rem">
+
+    <!-- Card de perfil -->
+    <div class="card shadow" id="profile-card">
+      <div class="profile-banner"></div>
+      <div class="profile-card-content">
+        <div class="profile-avatar-wrapper">
+          <div class="profile-avatar" id="profile-avatar-el">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+          </div>
+        </div>
+        <div class="profile-info">
+          <h2 id="profile-username"></h2>
+          <div class="email" id="profile-email"></div>
+          <span class="account-badge" id="profile-account-type"></span>
+        </div>
+
+        <div class="profile-stats" id="profile-stats"></div>
+
+        <div class="profile-actions">
+          <button class="btn btn-outline" onclick="openModal('edit-profile-modal')">Editar Perfil</button>
+          <button class="btn btn-destructive" onclick="handleLogout()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:1rem;height:1rem">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            Sair
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Meus anúncios (vendedores) -->
+    <div class="card shadow" id="my-ads-card" style="display:none">
+      <div class="card-header">
+        <div class="card-title" id="my-ads-title">Meus Anúncios</div>
+      </div>
+      <div class="card-content">
+        <div id="my-ads-grid" class="ads-grid" style="padding:0;max-width:none"></div>
+        <div id="my-ads-empty" class="empty-state" style="display:none">Você ainda não criou nenhum anúncio</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal: Editar Perfil -->
+<div class="overlay" id="edit-profile-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('edit-profile-modal')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+    <div class="modal-header">
+      <div class="modal-title">Editar Perfil</div>
+      <div class="modal-description">Atualize suas informações de exibição pública.</div>
+    </div>
+    <div class="form-group">
+      <label class="label" for="edit-username">Nome de Usuário</label>
+      <input class="input" id="edit-username" type="text">
+    </div>
+    <div class="form-group">
+      <label class="label" for="edit-contact">Contato</label>
+      <input class="input" id="edit-contact" type="text" placeholder="Telefone ou forma de contato">
+    </div>
+    <div class="form-group">
+      <label class="label">Foto de Perfil</label>
+      <div class="image-upload-area" id="photo-upload-area" onclick="document.getElementById('edit-photo-input').click()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+          <polyline points="21 15 16 10 5 21"/>
+        </svg>
+        <p style="font-size:.875rem;color:var(--muted-foreground)">Clique para escolher uma imagem</p>
+        <input type="file" id="edit-photo-input" accept="image/*" style="display:none" onchange="previewPhoto(this)">
+      </div>
+      <img id="photo-preview" class="image-preview" style="display:none;margin-top:.5rem">
+    </div>
+    <button class="btn btn-primary btn-full" onclick="saveProfile()">Salvar</button>
+  </div>
+</div>
+
+<nav class="bottom-nav" id="bottom-nav"></nav>
+<footer class="footer" id="app-footer"></footer>
+<div id="toast-container"></div>
+
+<script src="app.js"></script>
+<script>
+  let editPhotoData = '';
+
+  function previewPhoto(input) {
+    const file = input.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      editPhotoData = reader.result;
+      const preview = document.getElementById('photo-preview');
+      preview.src = editPhotoData;
+      preview.style.display = '';
+      document.querySelector('#photo-upload-area p').textContent = 'Imagem selecionada';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleLogout() {
+    State.logout();
+    toast('Sessão encerrada');
+    setTimeout(() => navigate('index.html'), 600);
+  }
+
+  async function saveProfile() {
+    const user = State.getUser();
+    if (!user) return;
+    const updates = {
+      username:     document.getElementById('edit-username').value.trim() || user.username,
+      contact:      document.getElementById('edit-contact').value.trim(),
+      profilePhoto: editPhotoData || user.profilePhoto || '',
+    };
+    try {
+      const data = await apiPost('update_profile.php', { id: user.id, ...updates });
+      if (data.success) {
+        State.setUser({ ...user, ...updates });
+        toast('Perfil atualizado com sucesso!');
+        closeModal('edit-profile-modal');
+        renderProfile();
+      } else {
+        toast(data.message || 'Erro ao atualizar o perfil.', 'error');
+      }
+    } catch {
+      toast('Erro de conexão.', 'error');
+    }
+  }
+
+  function renderProfile() {
+    const user = State.getUser();
+    if (!user) return;
+
+    // Avatar
+    const avatarEl = document.getElementById('profile-avatar-el');
+    if (user.profilePhoto) {
+      avatarEl.innerHTML = `<img src="${user.profilePhoto}" alt="Avatar" onerror="this.style.display='none'">`;
+    }
+
+    document.getElementById('profile-username').textContent = user.username;
+    document.getElementById('profile-email').textContent = user.email;
+    document.getElementById('profile-account-type').textContent = user.accountType.charAt(0).toUpperCase() +user.accountType.slice(1);
+
+    // Stats
+    const stats = document.getElementById('profile-stats');
+    let statsHtml = `<div><div class="stat-label">Instituição</div><div class="stat-value">${escHtml(user.school)}</div></div>`;
+    if (user.contact) {
+      statsHtml += `<div><div class="stat-label">Contato</div><div class="stat-value">${escHtml(user.contact)}</div></div>`;
+    }
+    if (user.accountType === 'vendedor') {
+      const sellerAds = State.ads.filter(a => a.id === user.id || a.sellerId === user.id);
+      const allReviews = sellerAds.flatMap(a => a.reviews);
+      const rating = allReviews.length
+        ? (allReviews.reduce((s,r) => s+r.rating,0) / allReviews.length).toFixed(1)
+        : null;
+      statsHtml += `<div>
+        <div class="stat-label">Avaliação do Vendedor</div>
+        <div class="stat-value text-yellow" style="display:flex;align-items:center;gap:.25rem">
+          <svg viewBox="0 0 24 24" fill="#eab308" stroke="#eab308" stroke-width="2" style="width:1rem;height:1rem">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+          ${rating ? rating : 'Sem avaliações'}
+        </div>
+      </div>`;
+    }
+    stats.innerHTML = statsHtml;
+
+    // Preencher form de edição
+    document.getElementById('edit-username').value = user.username;
+    document.getElementById('edit-contact').value = user.contact || '';
+    if (user.profilePhoto) {
+      const preview = document.getElementById('photo-preview');
+      preview.src = user.profilePhoto;
+      preview.style.display = '';
+    }
+
+    // Anúncios do vendedor
+    if (user.accountType === 'vendedor') {
+      const myAdsCard = document.getElementById('my-ads-card');
+      myAdsCard.style.display = '';
+      const myAds = State.ads.filter(a => a.sellerId === user.id);
+      document.getElementById('my-ads-title').textContent = `Meus Anúncios (${myAds.length})`;
+      const grid = document.getElementById('my-ads-grid');
+      const empty = document.getElementById('my-ads-empty');
+      if (myAds.length === 0) {
+        grid.style.display = 'none';
+        empty.style.display = '';
+      } else {
+        grid.style.display = '';
+        empty.style.display = 'none';
+        grid.innerHTML = myAds.map(ad => adCardHTML(ad)).join('');
+      }
+    }
+  }
+
+  async function initPage() {
+    try {
+      const data = await fetchAds();
+      if (data.success) State.ads = data.ads;
+    } catch { State.ads = []; }
+    renderProfile();
+  }
+</script>
+</body>
+</html>
