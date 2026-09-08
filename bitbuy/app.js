@@ -166,6 +166,12 @@ async function fetchAds() {
   return r.json();
 }
 
+async function fetchUser(id) {
+  const r = await fetch(`${API_URL}/get_user.php?id=${encodeURIComponent(id)}`);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
 /* ============================================================
    NAVEGAÇÃO (SPA simples via hash ou reload)
    ============================================================ */
@@ -361,21 +367,6 @@ function openAdModal(ad) {
         </div>`).join('');
 
   const canReview = user && user.id !== ad.sellerId;
-  const isOwner = user && user.id === ad.sellerId;
-
-  const ownerActionsHtml = isOwner ? ` 
-      <div style="display:flex;gap:.75rem;margin-top:1.5rem;border-top:1px solid var(--border);padding-top:1.5rem">
-        <button class="btn btn-outline flex-1" onclick="openEditAdModal(${JSON.stringify(ad).replace(/"/g, '&quot;')})">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:1rem;height:1rem;margin-right:4px"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
-          Editar
-        </button>
-        <button class="btn btn-destructive flex-1" onclick="confirmDeleteAd('${ad.id}')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:1rem;height:1rem;margin-right:4px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-          Excluir
-      </button>
-    </div>
-  `: "";
-
   const reviewFormHtml = canReview ? `
     <div style="border:1px solid var(--border);border-radius:.75rem;padding:1rem;margin-top:1rem">
       <div style="font-weight:500;margin-bottom:.75rem">Deixe sua avaliação</div>
@@ -424,13 +415,12 @@ function openAdModal(ad) {
     </div>
     <div style="margin-bottom:1rem">
       <div style="font-weight:600;margin-bottom:.35rem">Vendedor</div>
-      <p style="color:var(--muted-foreground);font-size:.9rem">@${escHtml(ad.sellerUsername)}</p>
+      <p class="seller-link" onclick="navigate('seller-profile.html?id=${encodeURIComponent(ad.sellerId)}')">@${escHtml(ad.sellerUsername)}</p>
     </div>
     <div>
       <div style="font-weight:600;margin-bottom:.75rem">Avaliações (${ad.reviews.length})</div>
       ${reviewsHtml}
       ${reviewFormHtml}
-      ${ownerActionsHtml}
     </div>`;
 
   openModal('ad-detail-modal');
@@ -470,258 +460,6 @@ async function submitReview() {
     toast('Erro de conexão.', 'error');
   }
 }
-
-/* ============================================================
-   EXCLUIR ANÚNCIO
-   ============================================================ */
-function confirmDeleteAd(adId) {
-  if (!document.getElementById('delete-ad-modal')) {
-    document.body.insertAdjacentHTML('beforeend', `
-      <div class="overlay" id="delete-ad-modal">
-        <div class="modal">
-          <div class="modal-header">
-            <div class="modal-title text-destructive">Excluir Anúncio</div>
-            <div class="modal-description">Tem certeza que deseja excluir? Esta ação não tem volta.</div>
-          </div>
-          <div style="display:flex;gap:1rem;margin-top:1rem">
-            <button class="btn btn-outline flex-1" onclick="closeModal('delete-ad-modal')">Cancelar</button>
-            <button class="btn btn-destructive flex-1" id="btn-confirm-delete">Sim, Excluir</button>
-          </div>
-        </div>
-      </div>`);
-  }
-
-  openModal('delete-ad-modal');
-
-  document.getElementById('btn-confirm-delete').onclick = async () => {
-    try {
-      const user = State.getUser();
-      const data = await apiPost('delete_ad.php', { adId: parseInt(adId), userId: parseInt(user.id) });
-      
-      if (data.success) {
-        toast(data.message || 'Excluído com sucesso!'); 
-        closeModal('delete-ad-modal');
-        closeModal('ad-detail-modal'); 
-        
-        
-        State.ads = State.ads.filter(a => a.id !== String(adId));
-        
-        
-        const page = document.body.dataset.page;
-        if (page === 'home') filterAds();
-        if (page === 'profile') renderProfile();
-      } else {
-        toast(data.message || 'Erro ao excluir.', 'error');
-      }
-    } catch (e) {
-      toast('Erro de conexão ao excluir.', 'error');
-    }
-  };
-}
-
-/* ============================================================
-   EDITAR ANÚNCIO
-   ============================================================ */
-
-let _editAdImageData = null;
-let _editingAdId = null;
-
-function openEditAdModal(ad) {
-  _editingAdId = ad.id;
-  _editAdImageData = null; 
-
-  if (!document.getElementById('edit-ad-modal')) {
-    document.body.insertAdjacentHTML('beforeend', `
-      <div class="overlay" id="edit-ad-modal">
-        <div class="modal modal-lg">
-          <button class="modal-close" onclick="closeModal('edit-ad-modal')">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-          <div class="modal-header">
-            <div class="modal-title">Editar Anúncio</div>
-          </div>
-          <form id="edit-ad-form" onsubmit="submitEditAd(event)">
-            <div class="form-group">
-              <label class="label">Título</label>
-              <input class="input" id="edit-ad-title" type="text" required>
-            </div>
-            <div class="form-group">
-              <label class="label">Descrição</label>
-              <textarea class="textarea" id="edit-ad-description" rows="3" required></textarea>
-            </div>
-            
-            <div class="form-row">
-              <div class="form-group" style="margin-bottom:0">
-                <label class="label">Tipo</label>
-                <select class="select" id="edit-ad-type" onchange="toggleEditAdFields()">
-                  <option value="Produto">Produto</option>
-                  <option value="Servico">Serviço</option>
-                </select>
-              </div>
-              <div class="form-group" style="margin-bottom:0">
-                <label class="label">Preço (R$)</label>
-                <input class="input" id="edit-ad-price" type="number" step="0.01" min="0" required>
-              </div>
-            </div>
-            <div style="margin-bottom:1rem"></div>
-            
-            <div class="form-row">
-            <div class="form-group" id="edit-category-field" style="margin-bottom:0">
-                <label class="label">Categoria</label>
-                <select class="select" id="edit-ad-category">
-                  <option value="Alimentos">Alimentos</option>
-                  <option value="Informatica">Informática</option>
-                  <option value="Roupas">Roupas</option>
-                  <option value="Cosmeticos">Cosméticos</option>
-                  <option value="Material_Escolar">Material Escolar</option>
-                  <option value="Outros">Outros</option>
-                </select>
-              </div>
-              
-              <div class="form-group" id="edit-stock-field" style="margin-bottom:0">
-                <label class="label">Estoque</label>
-                <input class="input" id="edit-ad-stock" type="number" min="0">
-              </div>
-            </div>
-            <div style="margin-bottom:1rem"></div>
-            
-            <div class="form-group">
-              <label class="label">Nova Imagem (opcional)</label>
-              <input class="input" type="file" accept="image/*" onchange="previewEditAdImage(this)" style="padding:0.3rem">
-              <img id="edit-ad-image-preview" class="image-preview" style="display:none;margin-top:.5rem">
-            </div>
-            <button type="submit" class="btn btn-outline btn-full" style="margin-top:1rem">Salvar Alterações</button>
-          </form>
-        </div>
-      </div>
-    `);
-  }
-
-  
-  document.getElementById('edit-ad-title').value = ad.title;
-  document.getElementById('edit-ad-description').value = ad.description;
-  document.getElementById('edit-ad-price').value = ad.price;
-  document.getElementById('edit-ad-type').value = ad.type;
-
-  if (ad.type === 'Produto') {
-    document.getElementById('edit-stock-field').style.display = 'grid';
-    document.getElementById('edit-ad-stock').required = true;
-    document.getElementById('edit-ad-stock').value = ad.stock; 
-    
-    document.getElementById('edit-category-field').style.display = 'grid';
-    document.getElementById('edit-ad-category').value = ad.category;
-  } else {
-    document.getElementById('edit-stock-field').style.display = 'none';
-    document.getElementById('edit-ad-stock').required = false;
-    document.getElementById('edit-ad-stock').value = '';
-    
-    document.getElementById('edit-category-field').style.display = 'none';
-    document.getElementById('edit-ad-category').value = 'Outros';
-  }
-
-  document.getElementById('edit-ad-image-preview').style.display = 'none';
-  openModal('edit-ad-modal');
-}
-
-function toggleEditAdFields() {
-  const type = document.getElementById('edit-ad-type').value;
-  const stockField = document.getElementById('edit-stock-field');
-  const stockInput = document.getElementById('edit-ad-stock');
-  const catField = document.getElementById('edit-category-field');
-  const catInput = document.getElementById('edit-ad-category');
-
-  if (type === 'Produto') {
-    stockField.style.display = 'grid'; 
-    stockInput.required = true;
-    catField.style.display = 'grid'; 
-  } else {
-    stockField.style.display = 'none';
-    stockInput.required = false;
-    stockInput.value = ''; 
-    catField.style.display = 'none';
-    catInput.value = 'Outros'; 
-  }
-}
-
-function previewEditAdImage(input) {
-  const file = input.files?.[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const MAX_WIDTH = 800; 
-      let width = img.width;
-      let height = img.height;
-
-      if (width > MAX_WIDTH) {
-        height = Math.round(height * (MAX_WIDTH / width));
-        width = MAX_WIDTH;
-      }
-
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, width, height);
-
-      _editAdImageData = canvas.toDataURL('image/jpeg', 0.7); 
-      
-      const preview = document.getElementById('edit-ad-image-preview');
-      preview.src = _editAdImageData;
-      preview.style.display = '';
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-
-async function submitEditAd(e) {
-  e.preventDefault();
-  const user = State.getUser();
-  const type = document.getElementById('edit-ad-type').value;
-  
-  const payload = {
-    adId: parseInt(_editingAdId),
-    userId: parseInt(user.id),
-    title: document.getElementById('edit-ad-title').value.trim(),
-    description: document.getElementById('edit-ad-description').value.trim(),
-    price: parseFloat(document.getElementById('edit-ad-price').value),
-    type: type,
-    category: document.getElementById('edit-ad-category').value,
-    stock: type === 'Produto' ? parseInt(document.getElementById('edit-ad-stock').value || 0) : 0,
-    image: _editAdImageData 
-  };
-
-  try {
-    const data = await apiPost('update_ad.php', payload);
-    if (data.success) {
-      toast(data.message || 'Editado com sucesso!'); 
-      closeModal('edit-ad-modal');
-      closeModal('ad-detail-modal'); 
-      
-      const adIndex = State.ads.findIndex(a => a.id === String(_editingAdId));
-      if (adIndex !== -1) {
-        State.ads[adIndex] = { 
-          ...State.ads[adIndex], 
-          ...payload, 
-          id: String(payload.adId), 
-          image: payload.image || State.ads[adIndex].image 
-        };
-      }
-      
-      const page = document.body.dataset.page;
-      if (page === 'home') filterAds();
-      if (page === 'profile') renderProfile();
-    } else {
-      toast(data.message || 'Erro ao editar.', 'error');
-    }
-  } catch (err) {
-    toast('Erro de conexão.', 'error');
-  }
-}
-
 
 /* ============================================================
    INICIALIZAÇÃO GLOBAL

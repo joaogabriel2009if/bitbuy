@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BitBuy — Perfil do Vendedor</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="seller-profile">
+
+<div class="page-wrapper" style="padding:2rem 1rem 8rem;background:var(--muted);min-height:100vh">
+  <div style="max-width:56rem;margin:0 auto;display:flex;flex-direction:column;gap:1.5rem">
+
+    <button class="btn btn-ghost" style="align-self:flex-start;gap:.5rem" onclick="goBack()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:1rem;height:1rem">
+        <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+      </svg>
+      Voltar
+    </button>
+
+    <div id="seller-loading" class="empty-state loading-pulse">Carregando perfil...</div>
+    <div id="seller-not-found" class="empty-state" style="display:none">Vendedor não encontrado</div>
+
+    <div id="seller-content" style="display:none;flex-direction:column;gap:1.5rem">
+
+      <!-- Card de perfil do vendedor -->
+      <div class="card shadow" id="seller-card">
+        <div class="profile-banner"></div>
+        <div class="profile-card-content">
+          <div class="profile-avatar-wrapper">
+            <div class="profile-avatar" id="seller-avatar-el">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              </svg>
+            </div>
+          </div>
+          <div class="profile-info">
+            <h2 id="seller-username"></h2>
+            <span class="account-badge" id="seller-account-type"></span>
+          </div>
+
+          <div class="profile-stats" id="seller-stats"></div>
+        </div>
+      </div>
+
+      <!-- Anúncios do vendedor -->
+      <div class="card shadow" id="seller-ads-card">
+        <div class="card-header">
+          <div class="card-title" id="seller-ads-title">Anúncios</div>
+        </div>
+        <div class="card-content">
+          <div id="seller-ads-grid" class="ads-grid" style="padding:0;max-width:none"></div>
+          <div id="seller-ads-empty" class="empty-state" style="display:none">Este vendedor ainda não tem anúncios</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<nav class="bottom-nav" id="bottom-nav"></nav>
+<footer class="footer" id="app-footer"></footer>
+<div id="toast-container"></div>
+
+<script src="app.js"></script>
+<script>
+  function goBack() {
+    if (document.referrer && document.referrer.includes(window.location.host)) {
+      history.back();
+    } else {
+      navigate('home.html');
+    }
+  }
+
+  function getQueryParam(name) {
+    return new URLSearchParams(window.location.search).get(name);
+  }
+
+  function renderSellerProfile(seller) {
+    const avatarEl = document.getElementById('seller-avatar-el');
+    if (seller.profilePhoto) {
+      avatarEl.innerHTML = `<img src="${seller.profilePhoto}" alt="Avatar" onerror="this.style.display='none'">`;
+    }
+
+    document.getElementById('seller-username').textContent = seller.username;
+    document.getElementById('seller-account-type').textContent = seller.accountType;
+
+    const sellerAds = State.ads.filter(a => String(a.sellerId) === String(seller.id));
+    const allReviews = sellerAds.flatMap(a => a.reviews);
+    const rating = allReviews.length
+      ? (allReviews.reduce((s, r) => s + r.rating, 0) / allReviews.length).toFixed(1)
+      : null;
+
+    let statsHtml = `<div><div class="stat-label">Instituição</div><div class="stat-value">${escHtml(seller.school)}</div></div>`;
+    if (seller.contact) {
+      statsHtml += `<div><div class="stat-label">Contato</div><div class="stat-value">${escHtml(seller.contact)}</div></div>`;
+    }
+    statsHtml += `<div>
+      <div class="stat-label">Avaliação do Vendedor</div>
+      <div class="stat-value text-yellow" style="display:flex;align-items:center;gap:.25rem">
+        <svg viewBox="0 0 24 24" fill="#eab308" stroke="#eab308" stroke-width="2" style="width:1rem;height:1rem">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+        ${rating ? rating : 'Sem avaliações'}
+      </div>
+    </div>`;
+    document.getElementById('seller-stats').innerHTML = statsHtml;
+
+    document.getElementById('seller-ads-title').textContent = `Anúncios (${sellerAds.length})`;
+    const grid = document.getElementById('seller-ads-grid');
+    const empty = document.getElementById('seller-ads-empty');
+    if (sellerAds.length === 0) {
+      grid.style.display = 'none';
+      empty.style.display = '';
+    } else {
+      grid.style.display = '';
+      empty.style.display = 'none';
+      grid.innerHTML = sellerAds.map(ad => adCardHTML(ad)).join('');
+    }
+
+    document.getElementById('seller-content').style.display = 'flex';
+  }
+
+  async function initPage() {
+    const sellerId = getQueryParam('id');
+    if (!sellerId) { navigate('home.html'); return; }
+
+    // Se o usuário clicou no próprio nome, manda para a página de perfil completa (com edição)
+    const currentUser = State.getUser();
+    if (currentUser && String(currentUser.id) === String(sellerId)) {
+      navigate('profile.html');
+      return;
+    }
+
+    try {
+      const [userData, adsData] = await Promise.all([fetchUser(sellerId), fetchAds()]);
+      document.getElementById('seller-loading').style.display = 'none';
+
+      if (!userData.success || !userData.user) {
+        document.getElementById('seller-not-found').style.display = '';
+        return;
+      }
+      if (adsData.success) State.ads = adsData.ads;
+
+      renderSellerProfile(userData.user);
+    } catch (err) {
+      document.getElementById('seller-loading').style.display = 'none';
+      document.getElementById('seller-not-found').style.display = '';
+    }
+  }
+</script>
+</body>
+</html>

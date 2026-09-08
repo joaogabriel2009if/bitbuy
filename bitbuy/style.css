@@ -722,6 +722,7 @@ main {
 
 /* ---- AD CARD ---- */
 .ad-card {
+  position: relative;
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -730,6 +731,34 @@ main {
   transition: transform 0.2s, box-shadow 0.2s;
 }
 .ad-card:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+
+/* ---- Ações do vendedor sobre o próprio card (editar/excluir) ---- */
+.ad-card-actions {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 2;
+  display: flex;
+  gap: 0.4rem;
+}
+.ad-card-action-btn {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.92);
+  color: var(--foreground);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  transition: background 0.15s, color 0.15s, transform 0.15s;
+}
+.ad-card-action-btn:hover { transform: scale(1.08); }
+.ad-card-action-btn.edit:hover { background: var(--accent); color: #fff; }
+.ad-card-action-btn.delete:hover { background: var(--destructive); color: #fff; }
+.dark .ad-card-action-btn { background: rgba(26,16,53,0.92); }
+.ad-card-action-btn svg { width: 1rem; height: 1rem; }
 
 .ad-card-img {
   width: 100%;
@@ -750,6 +779,17 @@ main {
 .ad-price { font-size: 1.25rem; font-weight: 700; color: var(--accent); margin-bottom: 0.35rem; }
 .ad-meta { font-size: 0.78rem; color: var(--muted-foreground); display: flex; align-items: center; gap: 0.25rem; }
 .ad-meta svg { width: 1rem; height: 1rem; }
+
+/* ---- Link para o perfil do vendedor (no modal de detalhe do anúncio) ---- */
+.seller-link {
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-block;
+  transition: opacity 0.15s;
+}
+.seller-link:hover { opacity: 0.75; text-decoration: underline; }
 
 /* ---- PROFILE PAGE ---- */
 .profile-banner { height: 8rem; background: linear-gradient(to right, rgba(24,10,108,0.8), #180A6C); }
