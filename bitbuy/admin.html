@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BitBuy — Painel Admin</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="admin">
+
+<div class="page-wrapper" style="padding:2rem 1rem 8rem;background:var(--muted);min-height:100vh">
+  <div style="max-width:56rem;margin:0 auto">
+
+    <h2 style="font-size:1.5rem;font-weight:700;margin-bottom:1.25rem">Painel do Administrador</h2>
+
+    <div id="admin-tabs">
+      <div class="tabs-list" style="margin-bottom:1.5rem">
+        <button class="tab-trigger active" data-tab="pending">Pendentes <span id="count-pending"></span></button>
+        <button class="tab-trigger" data-tab="reports">Denúncias <span id="count-reports"></span></button>
+        <button class="tab-trigger" data-tab="comments">Comentários <span id="count-comments"></span></button>
+        <button class="tab-trigger" data-tab="all">Todos</button>
+      </div>
+
+      <div class="tab-content active" data-tab="pending"><div id="list-pending"></div></div>
+      <div class="tab-content" data-tab="reports"><div id="list-reports"></div></div>
+      <div class="tab-content" data-tab="comments"><div id="list-comments"></div></div>
+      <div class="tab-content" data-tab="all"><div id="list-all"></div></div>
+    </div>
+
+  </div>
+</div>
+
+<nav class="bottom-nav" id="bottom-nav"></nav>
+<footer class="footer" id="app-footer"></footer>
+<div id="toast-container"></div>
+
+<script src="app.js"></script>
+<script>
+  let adminAds = [];
+  let adminReports = [];
+
+  function rowHTML(ad, actions, extra = '') {
+    return `
+      <div class="card shadow" style="margin-bottom:1rem;padding:1rem;display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-start">
+        ${ad.image ? `<img src="${escHtml(ad.image)}" alt="" style="width:96px;height:96px;object-fit:cover;border-radius:.5rem">` : ''}
+        <div style="flex:1;min-width:12rem">
+          <div style="font-weight:600;margin-bottom:.25rem">
+            ${escHtml(ad.title)}
+            <span class="badge badge-secondary">${escHtml(ad.status)}</span>
+          </div>
+          <div style="font-size:.85rem;color:var(--muted-foreground)">
+            @${escHtml(ad.sellerUsername)} · R$ ${Number(ad.price).toFixed(2)} · ${escHtml(ad.type)} / ${escHtml(ad.category)}
+          </div>
+          <p style="font-size:.85rem;margin-top:.35rem">${escHtml(ad.description)}</p>
+          ${extra}
+        </div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">${actions}</div>
+      </div>`;
+  }
+
+  const btnApprove = id => `<button class="btn btn-primary btn-sm" onclick="reviewAd('${id}','aprovar')">Aprovar</button>`;
+  const btnReject  = id => `<button class="btn btn-outline btn-sm" onclick="reviewAd('${id}','rejeitar')">Rejeitar</button>`;
+  const btnDelete  = id => `<button class="btn btn-destructive btn-sm" onclick="deleteAd('${id}')">Excluir</button>`;
+  const btnIgnore  = id => `<button class="btn btn-outline btn-sm" onclick="dismissReports('${id}')">Ignorar denúncias</button>`;
+
+  function reviewRowHTML(r) {
+    const stars = '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating);
+    return `
+      <div class="card shadow" style="margin-bottom:1rem;padding:1rem">
+        <div style="font-size:.85rem;color:var(--muted-foreground);margin-bottom:.35rem">
+          Em: <strong>${escHtml(r.adTitle)}</strong> · @${escHtml(r.username)} · <span style="color:#eab308">${stars}</span>
+        </div>
+        ${r.comment
+          ? `<p style="margin-bottom:.75rem">${escHtml(r.comment)}</p>`
+          : `<p style="margin-bottom:.75rem;color:var(--muted-foreground);font-style:italic">Sem comentário escrito</p>`}
+        <button class="btn btn-destructive btn-sm" onclick="deleteReview('${r.id}')">Excluir comentário</button>
+      </div>`;
+  }
+
+  function renderAdmin() {
+    const pending = adminAds.filter(a => a.status === 'pendente');
+    document.getElementById('count-pending').textContent = pending.length ? `(${pending.length})` : '';
+    document.getElementById('count-reports').textContent = adminReports.length ? `(${adminReports.length})` : '';
+
+    const allReviews = adminAds.flatMap(a => a.reviews.map(r => ({ ...r, adTitle: a.title })));
+    document.getElementById('count-comments').textContent = allReviews.length ? `(${allReviews.length})` : '';
+
+    document.getElementById('list-pending').innerHTML = pending.length
+      ? pending.map(a => rowHTML(a, btnApprove(a.id) + btnReject(a.id) + btnDelete(a.id))).join('')
+      : '<div class="empty-state">Nenhum anúncio aguardando aprovação</div>';
+
+    document.getElementById('list-reports').innerHTML = adminReports.length
+      ? adminReports.map(r => {
+          const ad = adminAds.find(a => a.id === r.adId);
+          if (!ad) return '';
+          const extra = `<div style="font-size:.8rem;margin-top:.5rem;color:var(--destructive)">
+            🚩 ${r.total} denúncia(s) — ${escHtml(r.reporters)}</div>`;
+          return rowHTML(ad, btnIgnore(ad.id) + btnDelete(ad.id), extra);
+        }).join('')
+      : '<div class="empty-state">Nenhuma denúncia</div>';
+
+    document.getElementById('list-comments').innerHTML = allReviews.length
+      ? allReviews.map(r => reviewRowHTML(r)).join('')
+      : '<div class="empty-state">Nenhum comentário</div>';
+
+    document.getElementById('list-all').innerHTML = adminAds.length
+      ? adminAds.map(a => rowHTML(a,
+          (a.status !== 'aprovado' ? btnApprove(a.id) : '') +
+          (a.status !== 'rejeitado' ? btnReject(a.id) : '') +
+          btnDelete(a.id))).join('')
+      : '<div class="empty-state">Nenhum anúncio</div>';
+  }
+
+  async function loadAdmin() {
+    try {
+      const [ads, reps] = await Promise.all([
+        adminGet('get_ads.php', { status: 'todos' }),
+        adminGet('get_reports.php'),
+      ]);
+      if (!ads.success) { toast(ads.message || 'Erro ao carregar anúncios.', 'error'); return; }
+      adminAds = ads.ads;
+      adminReports = reps.success ? reps.reports : [];
+      renderAdmin();
+      if (typeof checkAdminPing === 'function') checkAdminPing();
+    } catch {
+      toast('Erro de conexão.', 'error');
+    }
+  }
+
+  async function adminAction(endpoint, payload, okMsg) {
+    try {
+      const data = await apiPost(endpoint, { adminId: State.getUser().id, ...payload });
+      if (data.success) { toast(okMsg); await loadAdmin(); }
+      else toast(data.message || 'Erro na operação.', 'error');
+    } catch {
+      toast('Erro de conexão.', 'error');
+    }
+  }
+
+  function reviewAd(adId, action) {
+    adminAction('review_ad.php', { adId, action }, action === 'aprovar' ? 'Anúncio aprovado!' : 'Anúncio rejeitado.');
+  }
+
+  function deleteAd(adId) {
+    if (!confirm('Excluir este anúncio definitivamente? Avaliações e denúncias também serão apagadas.')) return;
+    adminAction('admin_delete_ad.php', { adId }, 'Anúncio excluído.');
+  }
+
+  function deleteReview(reviewId) {
+    if (!confirm('Excluir este comentário definitivamente?')) return;
+    adminAction('delete_review.php', { reviewId }, 'Comentário excluído.');
+  }
+
+  function dismissReports(adId) {
+    adminAction('resolve_reports.php', { adId }, 'Denúncias ignoradas.');
+  }
+
+  function initPage() {
+    if (State.getUser()?.accountType !== 'admin') {
+      navigate('home.html');
+      return;
+    }
+    initTabs('admin-tabs');
+    loadAdmin();
+  }
+</script>
+</body>
+</html>

@@ -22,3 +22,39 @@ if ($conn->connect_error) {
 }
 
 $conn->set_charset("utf8mb4");
+
+/* ============================================================
+   Verifica se o id informado pertence a um usuário admin.
+   Se não for, responde com erro e encerra o script (exit) —
+   por isso os arquivos que chamam requireAdmin() não precisam
+   checar o retorno: se a execução continuar, é porque é admin.
+   ============================================================ */
+function requireAdmin($conn, $adminId) {
+    $adminId = (int)$adminId;
+
+    if (!$adminId) {
+        echo json_encode(["success" => false, "message" => "ID do administrador não fornecido."]);
+        exit;
+    }
+
+    $stmt = $conn->prepare("SELECT accountType FROM users WHERE id = ?");
+    $stmt->bind_param("i", $adminId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if (!$result || $result->num_rows === 0) {
+        echo json_encode(["success" => false, "message" => "Usuário não encontrado."]);
+        $stmt->close();
+        $conn->close();
+        exit;
+    }
+
+    $row = $result->fetch_assoc();
+    $stmt->close();
+
+    if ($row['accountType'] !== 'admin') {
+        echo json_encode(["success" => false, "message" => "Acesso negado: requer permissão de administrador."]);
+        $conn->close();
+        exit;
+    }
+}

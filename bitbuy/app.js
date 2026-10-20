@@ -172,6 +172,14 @@ async function fetchUser(id) {
   return r.json();
 }
 
+async function adminGet(endpoint, params = {}) {
+  const user = State.getUser();
+  const query = new URLSearchParams({ ...params, adminId: user ? user.id : '' }).toString();
+  const r = await fetch(`${API_URL}/${endpoint}?${query}`);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
 /* ============================================================
    NAVEGAÇÃO (SPA simples via hash ou reload)
    ============================================================ */
@@ -291,6 +299,11 @@ function renderBottomNav(activePage) {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         <span>Perfil</span>
       </button>
+      ${user?.accountType === 'admin' ? `
+      <button class="nav-btn ${activePage==='admin'?'active':''}" onclick="navigate('admin.html')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/></svg>
+        <span>Admin</span>
+      </button>` : ''}
     </div>`;
 }
 
@@ -417,6 +430,15 @@ function openAdModal(ad) {
       <div style="font-weight:600;margin-bottom:.35rem">Vendedor</div>
       <p class="seller-link" onclick="navigate('seller-profile.html?id=${encodeURIComponent(ad.sellerId)}')">@${escHtml(ad.sellerUsername)}</p>
     </div>
+    ${canReview ? `
+    <div style="margin-bottom:1rem">
+      <button class="btn btn-outline btn-sm" onclick="reportAd('${ad.id}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:.9rem;height:.9rem;margin-right:.35rem">
+          <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>
+        </svg>
+        Denunciar anúncio
+      </button>
+    </div>` : ''}
     <div>
       <div style="font-weight:600;margin-bottom:.75rem">Avaliações (${ad.reviews.length})</div>
       ${reviewsHtml}
@@ -428,6 +450,25 @@ function openAdModal(ad) {
   if (canReview) {
     const starsEl = document.getElementById('modal-stars');
     if (starsEl) renderStars(starsEl, _currentRating, true, v => { _currentRating = v; });
+  }
+}
+
+async function reportAd(adId) {
+  const user = State.getUser();
+  if (!user) return;
+  try {
+    const data = await apiPost('report_ad.php', {
+      adId,
+      userId: user.id,
+      username: user.username,
+    });
+    if (data.success) {
+      toast('Denúncia enviada. Obrigado por ajudar a manter o BitBuy seguro.');
+    } else {
+      toast(data.message || 'Erro ao enviar denúncia.', 'error');
+    }
+  } catch {
+    toast('Erro de conexão.', 'error');
   }
 }
 
