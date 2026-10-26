@@ -7,7 +7,7 @@ $sql = "SELECT adId, COUNT(*) AS total, MAX(createdAt) AS lastAt,
                GROUP_CONCAT(username SEPARATOR ', ') AS reporters
         FROM reports
         GROUP BY adId
-        ORDER BY lastAt DESC";
+        ORDER BY total DESC, lastAt DESC";
 $res = $conn->query($sql);
 $reports = [];
 

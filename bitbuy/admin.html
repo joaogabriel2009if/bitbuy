@@ -82,6 +82,10 @@
     document.getElementById('count-pending').textContent = pending.length ? `(${pending.length})` : '';
     document.getElementById('count-reports').textContent = adminReports.length ? `(${adminReports.length})` : '';
 
+    // Anúncios denunciados: mais denúncias primeiro (empate: denúncia mais recente primeiro)
+    const sortedReports = [...adminReports].sort((a, b) =>
+      (b.total - a.total) || String(b.lastAt).localeCompare(String(a.lastAt)));
+
     const allReviews = adminAds.flatMap(a => a.reviews.map(r => ({ ...r, adTitle: a.title })));
     document.getElementById('count-comments').textContent = allReviews.length ? `(${allReviews.length})` : '';
 
@@ -89,8 +93,8 @@
       ? pending.map(a => rowHTML(a, btnApprove(a.id) + btnReject(a.id) + btnDelete(a.id))).join('')
       : '<div class="empty-state">Nenhum anúncio aguardando aprovação</div>';
 
-    document.getElementById('list-reports').innerHTML = adminReports.length
-      ? adminReports.map(r => {
+    document.getElementById('list-reports').innerHTML = sortedReports.length
+      ? sortedReports.map(r => {
           const ad = adminAds.find(a => a.id === r.adId);
           if (!ad) return '';
           const extra = `<div style="font-size:.8rem;margin-top:.5rem;color:var(--destructive)">

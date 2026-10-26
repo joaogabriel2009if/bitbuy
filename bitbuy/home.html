@@ -60,18 +60,32 @@
     filterAds();
   }
 
-  function filterAds() {
-    const q = document.getElementById('search-input').value.toLowerCase();
-    const filtered = State.ads.filter(ad => {
-      const matchSearch = ad.title.toLowerCase().includes(q) || ad.description.toLowerCase().includes(q);
-      const matchCat = selectedCat === 'Todos' || ad.category === selectedCat;
+  // Normaliza texto para comparação: ignora maiúsculas, acentos, espaços e "_"
+  // (assim 'alimentos', 'Alimentos' e 'ALIMENTOS' contam como a mesma categoria,
+  // e 'Material_Escolar' bate com 'material escolar')
+  function norm(str) {
+    return String(str ?? '')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[\s_]+/g, '');
+  }
+
+  function getFilteredAds() {
+    const q = norm(document.getElementById('search-input').value);
+    return State.ads.filter(ad => {
+      const matchSearch = norm(ad.title).includes(q) || norm(ad.description).includes(q);
+      const matchCat = selectedCat === 'Todos' || norm(ad.category) === norm(selectedCat);
       return matchSearch && matchCat;
     });
-    renderAds(filtered);
+  }
+
+  function filterAds() {
+    renderAds(getFilteredAds());
   }
 
   function renderAds(ads) {
-    ads = ads ?? State.ads;
+    // Sem argumento (ex.: após enviar uma avaliação), respeita busca e categoria atuais
+    ads = ads ?? getFilteredAds();
     const grid = document.getElementById('ads-grid');
     const empty = document.getElementById('ads-empty');
     if (ads.length === 0) {
