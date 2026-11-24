@@ -1,0 +1,11 @@
+# Bloqueia absolutamente tudo nesta pasta e subpastas
+/*
+bitbuy/.env
+bitbuy/view_profile.html
+
+# Abre exceção para as pastas.
+!bitbuy/
+!api/
+
+# Abre exceção para o próprio arquivo .gitignore se manter salvo
+!.gitignore
