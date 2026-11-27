@@ -400,7 +400,7 @@ function openAdModal(ad) {
           <p style="font-size:.85rem;color:var(--muted-foreground)">${escHtml(r.comment)}</p>
         </div>`).join('');
 
-  const canReview = user && user.id !== ad.sellerId;
+  const canReview = user && user.accountType !== 'admin' && user.id !== ad.sellerId;
   const reviewFormHtml = canReview ? `
     <div style="border:1px solid var(--border);border-radius:.75rem;padding:1rem;margin-top:1rem">
       <div style="font-weight:500;margin-bottom:.75rem">Deixe sua avaliação</div>
@@ -439,7 +439,7 @@ function openAdModal(ad) {
       <div style="font-size:1.75rem;font-weight:700;color:var(--accent);margin-bottom:.5rem">R$ ${Number(ad.price).toFixed(2)}</div>
       <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem">
         <span class="badge badge-default">${escHtml(ad.type)}</span>
-        <span class="badge badge-outline">${escHtml(ad.category)}</span>
+        ${/^servi/i.test(ad.type) ? '' : `<span class="badge badge-outline">${escHtml(ad.category.replace(/_/g, ' '))}</span>`}
         ${ad.stock !== undefined && ad.stock !== null && ad.stock !== 0 ? `<span class="badge badge-secondary">Estoque: ${ad.stock}</span>` : ''}
       </div>
     </div>

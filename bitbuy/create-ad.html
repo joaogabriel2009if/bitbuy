@@ -55,7 +55,7 @@
             </div>
             <div class="form-group" style="margin-bottom:0">
               <label class="label" for="ad-price">Preço (R$)</label>
-              <input class="input" id="ad-price" type="number" step="0.01" min="0" placeholder="0,00" required>
+              <input class="input" id="ad-price" type="number" step="0.01" min="0" max="1000" placeholder="0,00" required>
             </div>
             
           </div>
@@ -177,6 +177,7 @@
 
     if (!title) { toast('Informe o título do anúncio.', 'error'); return; }
     if (isNaN(price) || price < 0) { toast('Informe um preço válido.', 'error'); return; }
+    if (price > 1000) { toast('O preço máximo é R$ 1000,00.', 'error'); return; }
 
     const btn = document.getElementById('submit-btn');
     btn.disabled = true;

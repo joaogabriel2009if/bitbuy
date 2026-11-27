@@ -35,6 +35,11 @@ if ($accountType === "vendedor" && !$contact) {
     exit;
 }
 
+if ($contact !== "" && !ctype_digit($contact)) {
+    echo json_encode(["success" => false, "message" => "O contato deve conter apenas números."]);
+    exit;
+}
+
 // Verifica duplicados
 $stmt = $conn->prepare("SELECT id FROM users WHERE username = ? OR email = ?");
 $stmt->bind_param("ss", $username, $email);

@@ -8,6 +8,7 @@
 </head>
 <body data-page="home">
 
+
 <!-- Header fixo com busca e categorias -->
 <header class="home-header">
   <div class="home-header-inner">
@@ -24,15 +25,18 @@
              oninput="filterAds()">
     </div>
 
-    <div class="categories" id="categories">
-      <span class="badge badge-default clickable active-cat" data-cat="Todos" onclick="selectCat(this,'Todos')">Todos</span>
-      <span class="badge badge-outline clickable" data-cat="Alimentos"  onclick="selectCat(this,'Alimentos')">Alimentos</span>
-      <span class="badge badge-outline clickable" data-cat="Informatica" onclick="selectCat(this,'Informatica')">Informática</span>
-      <span class="badge badge-outline clickable" data-cat="Roupas"     onclick="selectCat(this,'Roupas')">Roupas</span>
-      <span class="badge badge-outline clickable" data-cat="Cosmeticos"     onclick="selectCat(this,'Cosmeticos')">Cosméticos</span>
-      <span class="badge badge-outline clickable" data-cat="Material_Escolar"     onclick="selectCat(this,'Material_Escolar')">Material Escolar</span>
-      <span class="badge badge-outline clickable" data-cat="Outros"     onclick="selectCat(this,'Outros')">Outros</span>
-    </div>
+    <div style="display:flex;gap:.5rem;align-items:center">
+      <div class="categories" id="categories">
+        <span class="badge badge-default clickable active-cat" data-cat="Todos" onclick="selectCat(this,'Todos')">Todos</span>
+        <span class="badge badge-outline clickable" data-cat="Alimentos"  onclick="selectCat(this,'Alimentos')">Alimentos</span>
+        <span class="badge badge-outline clickable" data-cat="Informatica" onclick="selectCat(this,'Informatica')">Informática</span>
+        <span class="badge badge-outline clickable" data-cat="Roupas"     onclick="selectCat(this,'Roupas')">Roupas</span>
+        <span class="badge badge-outline clickable" data-cat="Cosmeticos"     onclick="selectCat(this,'Cosmeticos')">Cosméticos</span>
+        <span class="badge badge-outline clickable" data-cat="Material_Escolar"     onclick="selectCat(this,'Material_Escolar')">Material Escolar</span>
+        <span class="badge badge-outline clickable" data-cat="Outros"     onclick="selectCat(this,'Outros')">Outros</span>
+        <span class="cat-sep" aria-hidden="true">-</span>
+        <span class="badge badge-outline clickable" data-cat="Servicos" onclick="selectCat(this,'Servicos')">Serviços</span>
+      </div>
   </div>
 </header>
 
@@ -50,11 +54,11 @@
 
 <script src="app.js"></script>
 <script>
-  let selectedCat = 'Todos';
+  let selectedCat  = 'Todos';
 
   function selectCat(el, cat) {
     selectedCat = cat;
-    document.querySelectorAll('.categories .badge').forEach(b => {
+    document.querySelectorAll('[data-cat]').forEach(b => {
       b.className = 'badge clickable ' + (b.dataset.cat === cat ? 'badge-default' : 'badge-outline');
     });
     filterAds();
@@ -71,10 +75,24 @@
   }
 
   function getFilteredAds() {
-    const q = norm(document.getElementById('search-input').value);
+    const q      = norm(document.getElementById('search-input').value);
+    const catKey = norm(selectedCat);
+
     return State.ads.filter(ad => {
       const matchSearch = norm(ad.title).includes(q) || norm(ad.description).includes(q);
-      const matchCat = selectedCat === 'Todos' || norm(ad.category) === norm(selectedCat);
+
+      let matchCat;
+      if (catKey === 'todos') {
+        matchCat = true;
+      } else if (catKey === 'servicos' || catKey === 'servico') {
+        matchCat = norm(ad.type) === 'servico';
+      } else if (catKey === 'outros') {
+        // "Outros" mostra só produtos — serviços têm seu próprio filtro
+        matchCat = norm(ad.category) === 'outros' && norm(ad.type) !== 'servico';
+      } else {
+        matchCat = norm(ad.category) === catKey;
+      }
+
       return matchSearch && matchCat;
     });
   }

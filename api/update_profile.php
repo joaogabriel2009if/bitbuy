@@ -17,6 +17,10 @@ $values        = [];
 
 foreach ($allowedFields as $field) {
     if (isset($data[$field])) {
+        if ($field === 'contact' && $data[$field] !== '' && !ctype_digit((string)$data[$field])) {
+            echo json_encode(["success" => false, "message" => "O contato deve conter apenas números."]);
+            exit;
+        }
         $setParts[] = "$field = ?";
         $types     .= "s";
         $values[]   = $data[$field];

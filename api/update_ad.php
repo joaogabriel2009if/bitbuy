@@ -18,6 +18,11 @@ if (!$adId || !$userId || !$title || $price === null) {
     exit;
 }
 
+if ($price < 0 || $price > 1000) {
+    echo json_encode(["success" => false, "message" => "O preço deve estar entre R$ 0 e R$ 1000."]);
+    exit;
+}
+
 $validTypes      = ["Produto", "Servico"];                                                      // tipos e categorias válidas
 $validCategories = ["Alimentos", "Informatica", "Roupas", "Cosmeticos", "Material_Escolar", "Outros"];
 

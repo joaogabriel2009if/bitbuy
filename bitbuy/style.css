@@ -708,6 +708,13 @@ main {
 
 .categories { display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.5rem; }
 .categories::-webkit-scrollbar { display: none; }
+.cat-sep {
+  align-self: center;
+  color: var(--muted-foreground);
+  opacity: 0.5;
+  user-select: none;
+  font-size: 0.875rem;
+}
 
 .ads-grid {
   display: grid;

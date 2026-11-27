@@ -46,10 +46,10 @@
         <div style="flex:1;min-width:12rem">
           <div style="font-weight:600;margin-bottom:.25rem">
             ${escHtml(ad.title)}
-            <span class="badge badge-secondary">${escHtml(ad.status)}</span>
+            <span class="badge badge-secondary">${escHtml(ad.status.charAt(0).toUpperCase() + ad.status.slice(1))}</span>
           </div>
           <div style="font-size:.85rem;color:var(--muted-foreground)">
-            @${escHtml(ad.sellerUsername)} · R$ ${Number(ad.price).toFixed(2)} · ${escHtml(ad.type)} / ${escHtml(ad.category)}
+            @${escHtml(ad.sellerUsername)} · R$ ${Number(ad.price).toFixed(2)} · ${escHtml(ad.type)}${ad.type === 'Serviço' ? '' : ' / ' + escHtml(ad.category.replace(/_/g, ' '))}
           </div>
           <p style="font-size:.85rem;margin-top:.35rem">${escHtml(ad.description)}</p>
           ${extra}
@@ -147,7 +147,7 @@
 
   function deleteAd(adId) {
     if (!confirm('Excluir este anúncio definitivamente? Avaliações e denúncias também serão apagadas.')) return;
-    adminAction('admin_delete_ad.php', { adId }, 'Anúncio excluído.');
+    adminAction('admin_delete_ad.php.php', { adId }, 'Anúncio excluído.');
   }
 
   function deleteReview(reviewId) {

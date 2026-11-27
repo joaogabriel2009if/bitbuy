@@ -13,6 +13,12 @@ $image          = $data["image"]               ?? "";
 $sellerId       = isset($data["sellerId"])     ? (int)$data["sellerId"] : null;
 $sellerUsername = trim($data["sellerUsername"] ?? "");
 
+
+if ($price < 0 || $price > 1000) {
+    echo json_encode(["success" => false, "message" => "O preço deve estar entre R$ 0 e R$ 1000."]);
+    exit;
+}
+
 if (!$title || $price === null || !$sellerId || !$sellerUsername) {
     echo json_encode(["success" => false, "message" => "Dados insuficientes."]);
     exit;
